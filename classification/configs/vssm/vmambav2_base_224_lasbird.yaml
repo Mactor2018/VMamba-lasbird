@@ -1,0 +1,58 @@
+MODEL:
+  TYPE: vssm
+  NAME: vssm_base_224
+  DROP_RATE: 0.0
+  DROP_PATH_RATE: 0.2
+  LABEL_SMOOTHING: 0.1
+  NUM_CLASSES: 1000  # 这个值会被自动更新为实际的类别数
+
+DATA:
+  BATCH_SIZE: 128
+  IMG_SIZE: 224
+  DATASET: lasbird
+  TRAIN_CSV: /root/labirds/complementaryExperiments/open_clip/scripts/bird_train_pure.csv
+  TEST_CSV: /root/labirds/complementaryExperiments/open_clip/scripts/bird_test_pure.csv
+  VAL_SUBSET_RATIO: 0.2  # 验证集子集比例
+  NUM_WORKERS: 8
+  PIN_MEMORY: True
+  INTERPOLATION: bicubic
+
+TRAIN:
+  EPOCHS: 300
+  WARMUP_EPOCHS: 20
+  WARMUP_LR: 1e-6
+  MIN_LR: 1e-5
+  BASE_LR: 1e-3
+  CLIP_GRAD: 5.0
+  ACCUMULATION_STEPS: 1
+  AUTO_RESUME: True
+  START_EPOCH: 0
+
+AUG:
+  COLOR_JITTER: 0.4
+  AUTO_AUGMENT: rand-m9-mstd0.5-inc1
+  REPROB: 0.25
+  REMODE: pixel
+  RECOUNT: 1
+  MIXUP: 0.8
+  CUTMIX: 1.0
+  CUTMIX_MINMAX: None
+  MIXUP_PROB: 1.0
+  MIXUP_SWITCH_PROB: 0.5
+  MIXUP_MODE: batch
+
+TEST:
+  CROP: True
+  SEQUENTIAL: False
+  SHUFFLE: False
+
+# 添加缺少的配置项
+AMP_ENABLE: True
+AMP_OPT_LEVEL: ''
+SEED: 0
+EVAL_MODE: False
+THROUGHPUT_MODE: False
+
+OUTPUT: output/vmamba_base_224_lasbird
+SAVE_FREQ: 1
+PRINT_FREQ: 10 

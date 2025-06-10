@@ -17,6 +17,7 @@ from timm.data import create_transform
 from .cached_image_folder import CachedImageFolder
 from .imagenet22k_dataset import IN22KDATASET
 from .samplers import SubsetRandomSampler
+from .CSVdataset import LaSBiRD
 
 try:
     from torchvision.transforms import InterpolationMode
@@ -116,8 +117,55 @@ def build_dataset(is_train, config):
             ann_file = prefix + "_map_val.txt"
         dataset = IN22KDATASET(config.DATA.DATA_PATH, ann_file, transform)
         nb_classes = 21841
+    elif config.DATA.DATASET == 'lasbird':
+        # 验证必要的配置是否存在
+        if not hasattr(config.DATA, 'TRAIN_CSV') or not hasattr(config.DATA, 'TEST_CSV'):
+            raise ValueError("LaSBiRD dataset requires TRAIN_CSV and TEST_CSV paths in config")
+        
+        if not os.path.exists(config.DATA.TRAIN_CSV):
+            raise FileNotFoundError(f"Training CSV file not found: {config.DATA.TRAIN_CSV}")
+        
+        if not os.path.exists(config.DATA.TEST_CSV):
+            raise FileNotFoundError(f"Test CSV file not found: {config.DATA.TEST_CSV}")
+        
+        if is_train:
+            # 训练集：正常创建，获取标签映射
+            csv_file = config.DATA.TRAIN_CSV
+            dataset = LaSBiRD(csv_file=csv_file, transform=transform, train=True)
+            nb_classes = len(dataset.classes)
+        else:
+            # 首先创建训练集以获取标签映射
+            train_csv_file = config.DATA.TRAIN_CSV
+            train_dataset = LaSBiRD(csv_file=train_csv_file, transform=None, train=True)
+            
+            # 创建测试集
+            csv_file = config.DATA.TEST_CSV
+            dataset = LaSBiRD(csv_file=csv_file, transform=transform, train=False)
+            
+            # 强制测试集使用训练集的标签映射
+            dataset.force_edit_maps(
+                train_dataset.classes,
+                train_dataset.class_to_idx,
+                train_dataset.idx_to_class
+            )
+            
+            # 创建验证集子集
+            if config.DATA.VAL_SUBSET_RATIO > 0:
+                val_size = int(len(dataset) * config.DATA.VAL_SUBSET_RATIO)
+                indices = torch.randperm(len(dataset))[:val_size]
+                # 创建一个包装类来保持对原始数据集属性的访问
+                class SubsetWithAttributes(torch.utils.data.Subset):
+                    def __init__(self, dataset, indices):
+                        super().__init__(dataset, indices)
+                        self.classes = dataset.classes
+                        self.class_to_idx = dataset.class_to_idx
+                        self.idx_to_class = dataset.idx_to_class
+                
+                dataset = SubsetWithAttributes(dataset, indices)
+            
+            nb_classes = len(train_dataset.classes)
     else:
-        raise NotImplementedError("We only support ImageNet Now.")
+        raise NotImplementedError(f"Dataset {config.DATA.DATASET} is not supported.")
 
     return dataset, nb_classes
 

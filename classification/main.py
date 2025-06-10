@@ -306,7 +306,7 @@ def validate(config, data_loader, model):
     acc5_meter = AverageMeter()
 
     end = time.time()
-    for idx, (images, target) in enumerate(data_loader):
+    for idx, ( _ ,images, target) in enumerate(data_loader):
         images = images.cuda(non_blocking=True)
         target = target.cuda(non_blocking=True)
 
