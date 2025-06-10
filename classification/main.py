@@ -29,12 +29,19 @@ from data import build_loader
 from utils.lr_scheduler import build_scheduler
 from utils.optimizer import build_optimizer
 from utils.logger import create_logger
+
 from utils.utils import  NativeScalerWithGradNormCount, auto_resume_helper, reduce_tensor
 from utils.utils import load_checkpoint_ema, load_pretrained_ema, save_checkpoint_ema
 
 from fvcore.nn import FlopCountAnalysis, flop_count_str, flop_count
 
 from timm.utils import ModelEma as ModelEma
+
+import warnings
+
+# 过滤掉timm的FutureWarning警告
+warnings.filterwarnings("ignore", category=FutureWarning)
+
 
 if torch.multiprocessing.get_start_method() != "spawn":
     print(f"||{torch.multiprocessing.get_start_method()}||", end="")
@@ -237,7 +244,7 @@ def train_one_epoch(config, model, criterion, data_loader, optimizer, epoch, mix
 
     start = time.time()
     end = time.time()
-    for idx, (samples, targets) in enumerate(data_loader):
+    for idx, (_, samples, targets) in enumerate(data_loader):
         torch.cuda.reset_peak_memory_stats()
         samples = samples.cuda(non_blocking=True)
         targets = targets.cuda(non_blocking=True)
@@ -306,7 +313,13 @@ def validate(config, data_loader, model):
     acc5_meter = AverageMeter()
 
     end = time.time()
-    for idx, ( _ ,images, target) in enumerate(data_loader):
+    for idx, batch_data in enumerate(data_loader):
+        # 处理不同数据集的数据格式
+        if len(batch_data) == 3:  # LaSBiRD数据集格式：(img_ids, images, target)
+            img_ids, images, target = batch_data
+        else:  # 标准格式：(images, target)
+            images, target = batch_data
+            
         images = images.cuda(non_blocking=True)
         target = target.cuda(non_blocking=True)
 
@@ -347,7 +360,7 @@ def validate(config, data_loader, model):
 def throughput(data_loader, model, logger):
     model.eval()
 
-    for idx, (images, _) in enumerate(data_loader):
+    for idx, (_, images, __) in enumerate(data_loader):
         images = images.cuda(non_blocking=True)
         batch_size = images.shape[0]
         for i in range(50):

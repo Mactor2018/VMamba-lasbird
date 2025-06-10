@@ -19,6 +19,14 @@ from .imagenet22k_dataset import IN22KDATASET
 from .samplers import SubsetRandomSampler
 from .CSVdataset import LaSBiRD
 
+class SubsetWithAttributes(torch.utils.data.Subset):
+    """子集数据集，保持对原始数据集属性的访问"""
+    def __init__(self, dataset, indices):
+        super().__init__(dataset, indices)
+        self.classes = dataset.classes
+        self.class_to_idx = dataset.class_to_idx
+        self.idx_to_class = dataset.idx_to_class
+
 try:
     from torchvision.transforms import InterpolationMode
 
@@ -149,19 +157,16 @@ def build_dataset(is_train, config):
                 train_dataset.idx_to_class
             )
             
-            # 创建验证集子集
+            # 创建验证集子集 - 均匀采样20%的数据
             if config.DATA.VAL_SUBSET_RATIO > 0:
                 val_size = int(len(dataset) * config.DATA.VAL_SUBSET_RATIO)
-                indices = torch.randperm(len(dataset))[:val_size]
-                # 创建一个包装类来保持对原始数据集属性的访问
-                class SubsetWithAttributes(torch.utils.data.Subset):
-                    def __init__(self, dataset, indices):
-                        super().__init__(dataset, indices)
-                        self.classes = dataset.classes
-                        self.class_to_idx = dataset.class_to_idx
-                        self.idx_to_class = dataset.idx_to_class
+                # 使用等间隔采样来确保均匀分布
+                step = len(dataset) // val_size
+                indices = list(range(0, len(dataset), step))[:val_size]
+                # 保持indices为Python列表，不要转换为tensor
                 
                 dataset = SubsetWithAttributes(dataset, indices)
+                print(f"创建验证集子集，从 {len(dataset.dataset)} 个样本中均匀采样了 {len(dataset)} 个样本")
             
             nb_classes = len(train_dataset.classes)
     else:
