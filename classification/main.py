@@ -15,6 +15,10 @@ import argparse
 import datetime
 import tqdm
 import numpy as np
+import warnings
+
+# 过滤掉timm的FutureWarning警告
+warnings.filterwarnings("ignore", category=FutureWarning, module="timm")
 
 import torch
 import torch.backends.cudnn as cudnn
@@ -237,7 +241,7 @@ def train_one_epoch(config, model, criterion, data_loader, optimizer, epoch, mix
 
     start = time.time()
     end = time.time()
-    for idx, (samples, targets) in enumerate(data_loader):
+    for idx, (_, samples, targets) in enumerate(data_loader):
         torch.cuda.reset_peak_memory_stats()
         samples = samples.cuda(non_blocking=True)
         targets = targets.cuda(non_blocking=True)
@@ -306,7 +310,13 @@ def validate(config, data_loader, model):
     acc5_meter = AverageMeter()
 
     end = time.time()
-    for idx, ( _ ,images, target) in enumerate(data_loader):
+    for idx, batch_data in enumerate(data_loader):
+        # 处理不同数据集的数据格式
+        if len(batch_data) == 3:  # LaSBiRD数据集格式：(img_ids, images, target)
+            img_ids, images, target = batch_data
+        else:  # 标准格式：(images, target)
+            images, target = batch_data
+            
         images = images.cuda(non_blocking=True)
         target = target.cuda(non_blocking=True)
 
@@ -347,7 +357,7 @@ def validate(config, data_loader, model):
 def throughput(data_loader, model, logger):
     model.eval()
 
-    for idx, (images, _) in enumerate(data_loader):
+    for idx, (_, images, __) in enumerate(data_loader):
         images = images.cuda(non_blocking=True)
         batch_size = images.shape[0]
         for i in range(50):

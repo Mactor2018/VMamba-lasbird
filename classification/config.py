@@ -40,6 +40,11 @@ _C.DATA.PIN_MEMORY = True
 # Number of data loading threads
 _C.DATA.NUM_WORKERS = 8
 
+# LaSBiRD dataset specific configurations
+_C.DATA.TRAIN_CSV = ''
+_C.DATA.TEST_CSV = ''
+_C.DATA.VAL_SUBSET_RATIO = 0.2
+
 # [SimMIM] Mask patch size for MaskGenerator
 _C.DATA.MASK_PATCH_SIZE = 32
 # [SimMIM] Mask ratio for MaskGenerator
